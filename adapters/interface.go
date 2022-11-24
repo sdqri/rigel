@@ -4,13 +4,12 @@ import "fmt"
 
 type Cacheable interface {
 	fmt.Stringer
-	GetKey() string
-	GetRedisPair() (string, string, error) //key, value, error
-	ParseValue(string) error
-	Assign(Cacheable) error
+	GetKey(string) string
+	GetPair(string) (string, string, error) //key, value, error
+	ParseValue(value string) error
 }
 
 type Cacher interface {
 	Cache(cacheable Cacheable) error
-	GetCachable(cacheable Cacheable) error 
+	GetCachable(cacheable Cacheable) error
 }

@@ -3,18 +3,19 @@ package main
 import (
 	"fmt"
 	"os"
-	"rigel/adapters"
-	"rigel/config"
-	ctrl "rigel/controller"
-	"rigel/service"
 	"strconv"
 	"time"
+
+	"github.com/sdqri/rigel/adapters"
+	"github.com/sdqri/rigel/config"
+	ctrl "github.com/sdqri/rigel/controller"
+	"github.com/sdqri/rigel/service"
 
 	swagger "github.com/arsmn/fiber-swagger/v2"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 
-	_ "rigel/docs"
+	_ "github.com/sdqri/rigel/docs"
 )
 
 // @title Rigel Api
@@ -40,32 +41,47 @@ func main() {
 	pid := os.Getpid()
 	entry := logger.WithFields(log.Fields{
 		"hostname": hostname,
-		"appname":  "argos",
+		"appname":  "rigel",
 		"pid":      strconv.Itoa(pid),
 	})
 	main_entry := entry.WithFields(log.Fields{
 		"package": "main",
 	})
 	main_entry.Debug("Into this world, we're thrown!")
-	
+
 	config := config.GetConfig()
-	rc := adapters.NewRedisClient(
-		main_entry, config.RedisAddress,
-		config.RedisPassword, config.RedisDB,
-		5 * time.Second)
-	memoryAdapter := adapters.NewMemoryClient[*service.RemoteImage](entry, rc, 10)
-    controller := ctrl.New(memoryAdapter, config)
-	
+
+	redisAdp := adapters.NewRedisClient(
+		main_entry,           //LogEntry
+		config.Prefix,        //Prefix
+		config.RedisAddress,  //addr
+		config.RedisPassword, //password
+		config.RedisDB,       //db
+		5*time.Second,        //timeout
+	)
+
+	memAdp := adapters.NewMemoryClient[*service.RemoteImage](
+		entry,         //logEntry
+		config.Prefix, //Prefix
+		10,            //cap
+	)
+
+	controller := ctrl.New(
+		entry,          //logEntry
+		config.Prefix,  //Prefix
+		config.Version, //Version
+		[]adapters.Cacher{memAdp, redisAdp},
+	)
+
 	server := fiber.New()
 
 	server.Get("/docs/*", swagger.HandlerDefault)
-
 	server.Get("/docs/*", swagger.New(swagger.Config{
-		URL: fmt.Sprintf("%s:%v/openapi.json", config.Host, config.Port),
+		URL:          fmt.Sprintf("%s:%v/openapi.json", config.Host, config.Port),
 		DocExpansion: "none",
 	}))
 
 	server.Mount(config.Prefix, controller.App)
 	addr := fmt.Sprintf("%s:%v", config.Host, config.Port)
-    server.Listen(addr)
+	server.Listen(addr)
 }

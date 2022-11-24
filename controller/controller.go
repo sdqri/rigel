@@ -3,11 +3,12 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"rigel/adapters"
-	"rigel/config"
-	"rigel/service"
+
+	"github.com/sdqri/rigel/adapters"
+	"github.com/sdqri/rigel/service"
 
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -15,18 +16,26 @@ var (
 )
 
 type RigelController struct {
+	LogEntry *log.Entry
+	Prefix   string
+	Version  string
 	*fiber.App
-	cacher adapters.Cacher 
-	cfg *config.Config
+	cachers []adapters.Cacher
 }
 
+func New(logEntry *log.Entry, prefix, version string, cashers []adapters.Cacher, fiberConfig ...fiber.Config) *RigelController {
+	// Setting package specific fields for log entry
+	entry := logEntry.WithFields(log.Fields{
+		"package": "adapters.controller",
+	})
 
-func New(cacher adapters.Cacher, cfg *config.Config, fiberConfig  ...fiber.Config) *RigelController{
 	router := fiber.New(fiberConfig...)
 	ctrl := &RigelController{
-		App: router,
-		cacher: cacher,
-		cfg: cfg,
+		LogEntry: entry,
+		Prefix:   prefix,
+		Version:  version,
+		App:      router,
+		cachers:  cashers,
 	}
 
 	ctrl.Get("/version", ctrl.getVersion)
@@ -34,42 +43,55 @@ func New(cacher adapters.Cacher, cfg *config.Config, fiberConfig  ...fiber.Confi
 	return ctrl
 }
 
-func (ctrl *RigelController) getVersion(c *fiber.Ctx) error{
-	return c.JSON(map[string]string{"version": ctrl.cfg.Version})
+func (ctrl *RigelController) getVersion(c *fiber.Ctx) error {
+	return c.JSON(map[string]string{"version": ctrl.Version})
 }
 
-
-func (ctrl *RigelController) getImage(c *fiber.Ctx) error{
+func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
+	// Checking whether query parameter exists
 	queryParams := c.Query("req")
 	if queryParams == "" {
 		return ErrNoQueryParameters
-	} 
+	}
 
-	remoteImage := service.NewRemoteImage(service.WithPrefix(ctrl.cfg.Prefix))
-	err := remoteImage.ParseQueryParams(queryParams)
-	if err!=nil{
+	// Parsing RemoteImage for finding src
+	imageRequest, err := service.ParseToken(queryParams)
+	if err != nil {
 		return err
 	}
 
-
-	// check if redisnil is error
-	err = ctrl.cacher.GetCachable(remoteImage)
-	if err != nil{
-		remoteImage.Process()
-	} 
-	
-	format, err := remoteImage.Type()
-	if err!=nil{
-		return err
+	var remoteImage *service.RemoteImage
+	remoteImage = service.NewRemoteImage(service.WithImageRequest(imageRequest))
+	// check chachers
+	for _, cacher := range ctrl.cachers {
+		err := cacher.GetCachable(remoteImage)
+		if err == nil {
+			fileName := fmt.Sprintf("image.%s", remoteImage.Type())
+			c.Attachment(fileName)
+			return c.Send(*remoteImage.Data)
+		}
 	}
-	filename := fmt.Sprintf("image.%s", format)
 
-	c.Attachment(filename)
+	// Downloading image
+	remoteImage, err = imageRequest.Download()
+	if err != nil {
+		return fiber.NewError(fiber.StatusFailedDependency, "error while trying to download image")
+	}
+
+	// Processing image
+	err = remoteImage.Process()
+	if err != nil {
+		return fiber.NewError(fiber.StatusFailedDependency, "error while processing image")
+	}
 
 	// Caching
-	go func ()  {
-		ctrl.cacher.Cache(remoteImage)
+	go func() {
+		for _, cacher := range ctrl.cachers {
+			cacher.Cache(remoteImage)
+		}
 	}()
 
+	fileName := fmt.Sprintf("image.%s", remoteImage.Type())
+	c.Attachment(fileName)
 	return c.Send(*remoteImage.Data)
 }

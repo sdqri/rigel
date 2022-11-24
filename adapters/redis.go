@@ -9,16 +9,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var(
+var (
 	ErrKeyNotExists error = errors.New("key doesnt not exists")
 )
 
 type RedisClient struct {
-	LogEntry            *log.Entry
-	Client              *redis.Client
+	LogEntry *log.Entry
+	Prefix   string
+	Client   *redis.Client
 }
 
-func NewRedisClient(logEntry *log.Entry, addr string, password string, db int, timeout time.Duration) *RedisClient {
+func NewRedisClient(logEntry *log.Entry, prefix string, addr string, password string, db int, timeout time.Duration) *RedisClient {
 	// Setting package specific fields for log entry
 	entry := logEntry.WithFields(log.Fields{
 		"package": "adapters.redis",
@@ -27,12 +28,13 @@ func NewRedisClient(logEntry *log.Entry, addr string, password string, db int, t
 	// Creating RedisClient
 	rc := RedisClient{
 		LogEntry: entry,
+		Prefix:   prefix,
 		Client: redis.NewClient(&redis.Options{
-			Addr:     addr,
-			Password: password,
-			DB:       db,
-			DialTimeout: timeout,
-			ReadTimeout: timeout,
+			Addr:         addr,
+			Password:     password,
+			DB:           db,
+			DialTimeout:  timeout,
+			ReadTimeout:  timeout,
 			WriteTimeout: timeout,
 		}),
 	}
@@ -42,8 +44,8 @@ func NewRedisClient(logEntry *log.Entry, addr string, password string, db int, t
 func (rc *RedisClient) Cache(cacheable Cacheable) error {
 	rc.LogEntry.Debugf("writing cacheable(%s) to redis", cacheable.String())
 	ctx := context.Background()
-	key, value, err := cacheable.GetRedisPair()
-	if err!= nil{
+	key, value, err := cacheable.GetPair(rc.Prefix)
+	if err != nil {
 		return err
 	}
 	return rc.Client.Set(ctx, key, value, 0).Err()
@@ -51,15 +53,15 @@ func (rc *RedisClient) Cache(cacheable Cacheable) error {
 
 func (rc *RedisClient) GetCachable(cacheable Cacheable) error {
 	ctx := context.Background()
-	key := cacheable.GetKey()
+	key := cacheable.GetKey(rc.Prefix)
 	rc.LogEntry.Debugf("reading cacheable(%s) from redis", key)
 	value, err := rc.Client.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return ErrKeyNotExists
 	}
-	
+
 	err = cacheable.ParseValue(value)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	return nil
