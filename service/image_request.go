@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/h2non/bimg"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sdqri/rigel/utils"
 )
@@ -16,6 +18,11 @@ var (
 	ErrResourceClaimNotExists error = errors.New("resource claim does not exists")
 	ErrResourceClaimType            = errors.New("resource claim cannot cast into string type")
 )
+
+type AlgKey struct {
+	Alg    jwa.KeyAlgorithm
+	PubKey jwk.Key
+}
 
 type ImageRequest struct {
 	URL     string       `json:"url"`
@@ -40,9 +47,12 @@ func (ir *ImageRequest) Download() (remoteImage *RemoteImage, err error) {
 	return
 }
 
-func ParseToken(queryToken string) (*ImageRequest, error) {
-	token, err := jwt.ParseString(queryToken, jwt.WithVerify(false)) //TODO: Add verification
-
+func ParseToken(algKey AlgKey, queryToken string, debug bool) (*ImageRequest, error) {
+	println("queryTOKEN", queryToken)
+	token, err := jwt.ParseString(queryToken, jwt.WithKey(algKey.Alg, algKey.PubKey), jwt.WithVerify(!debug))
+	if err != nil {
+		return nil, err
+	}
 	// Getting res key
 	resJSON, ok := token.Get("res")
 	if !ok {

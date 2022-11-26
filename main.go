@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sdqri/rigel/adapters"
 	"github.com/sdqri/rigel/config"
 	ctrl "github.com/sdqri/rigel/controller"
@@ -66,10 +68,22 @@ func main() {
 		10,            //cap
 	)
 
+	// Creating Algkey
+	pub, err := jwk.ParseKey(config.PubKeyPem, jwk.WithPEM(true))
+	if err != nil {
+		logger.Fatalf("Error while trying create AlgKey, err = %v", err)
+	}
+	algKey := service.AlgKey{
+		Alg:    jwa.SignatureAlgorithm(config.Alg),
+		PubKey: pub,
+	}
+
 	controller := ctrl.New(
 		entry,          //logEntry
+		false,          //debug
 		config.Prefix,  //Prefix
 		config.Version, //Version
+		algKey,         //AlgKey
 		[]adapters.Cacher{memAdp, redisAdp},
 	)
 

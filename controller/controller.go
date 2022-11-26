@@ -17,13 +17,15 @@ var (
 
 type RigelController struct {
 	LogEntry *log.Entry
+	debug    bool
 	Prefix   string
 	Version  string
+	service.AlgKey
 	*fiber.App
 	cachers []adapters.Cacher
 }
 
-func New(logEntry *log.Entry, prefix, version string, cashers []adapters.Cacher, fiberConfig ...fiber.Config) *RigelController {
+func New(logEntry *log.Entry, debug bool, prefix, version string, algKey service.AlgKey, cashers []adapters.Cacher, fiberConfig ...fiber.Config) *RigelController {
 	// Setting package specific fields for log entry
 	entry := logEntry.WithFields(log.Fields{
 		"package": "adapters.controller",
@@ -32,8 +34,10 @@ func New(logEntry *log.Entry, prefix, version string, cashers []adapters.Cacher,
 	router := fiber.New(fiberConfig...)
 	ctrl := &RigelController{
 		LogEntry: entry,
+		debug:    debug,
 		Prefix:   prefix,
 		Version:  version,
+		AlgKey:   algKey,
 		App:      router,
 		cachers:  cashers,
 	}
@@ -55,7 +59,7 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	}
 
 	// Parsing RemoteImage for finding src
-	imageRequest, err := service.ParseToken(queryParams)
+	imageRequest, err := service.ParseToken(ctrl.AlgKey, queryParams, ctrl.debug)
 	if err != nil {
 		return err
 	}
