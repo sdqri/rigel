@@ -48,7 +48,6 @@ func (ir *ImageRequest) Download() (remoteImage *RemoteImage, err error) {
 }
 
 func ParseToken(algKey AlgKey, queryToken string, debug bool) (*ImageRequest, error) {
-	println("queryTOKEN", queryToken)
 	token, err := jwt.ParseString(queryToken, jwt.WithKey(algKey.Alg, algKey.PubKey), jwt.WithVerify(!debug))
 	if err != nil {
 		return nil, err

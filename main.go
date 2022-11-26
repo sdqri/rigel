@@ -15,6 +15,7 @@ import (
 
 	swagger "github.com/arsmn/fiber-swagger/v2"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	log "github.com/sirupsen/logrus"
 
 	_ "github.com/sdqri/rigel/docs"
@@ -88,6 +89,7 @@ func main() {
 	)
 
 	server := fiber.New()
+	server.Use(recover.New())
 
 	server.Get("/docs/*", swagger.HandlerDefault)
 	server.Get("/docs/*", swagger.New(swagger.Config{

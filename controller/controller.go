@@ -55,13 +55,15 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	// Checking whether query parameter exists
 	queryParams := c.Query("req")
 	if queryParams == "" {
-		return ErrNoQueryParameters
+		c.SendStatus(404)
+		return c.SendString(ErrNoQueryParameters.Error())
 	}
 
 	// Parsing RemoteImage for finding src
 	imageRequest, err := service.ParseToken(ctrl.AlgKey, queryParams, ctrl.debug)
 	if err != nil {
-		return err
+		c.SendStatus(404)
+		return c.SendString(err.Error())
 	}
 
 	var remoteImage *service.RemoteImage
