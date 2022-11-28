@@ -1,0 +1,20 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Yet another image proxy",
+        "title": "Rigel Api",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Sadiq Rahmati",
+            "email": "sadeg.r1@gmail.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {}
+}
