@@ -66,7 +66,7 @@ func main() {
 	memAdp := adapters.NewMemoryClient[*service.RemoteImage](
 		entry,         //logEntry
 		config.Prefix, //Prefix
-		10,            //cap
+		config.Cap,    //cap
 	)
 
 	// Creating Algkey
@@ -97,7 +97,8 @@ func main() {
 		DocExpansion: "none",
 	}))
 
-	server.Mount(config.Prefix, controller.App)
+	mountPrefix := "/" + config.Prefix
+	server.Mount(mountPrefix, controller.App)
 	addr := fmt.Sprintf("%s:%v", config.Host, config.Port)
 	server.Listen(addr)
 }
