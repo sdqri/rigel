@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -53,6 +54,8 @@ func main() {
 	main_entry.Debug("Into this world, we're thrown!")
 
 	config := config.GetConfig()
+
+	config.PubKeyPem = []byte(strings.ReplaceAll(string(config.PubKeyPem), "\\n", "\n"))
 
 	redisAdp := adapters.NewRedisClient(
 		main_entry,           //LogEntry
