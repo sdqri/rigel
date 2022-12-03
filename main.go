@@ -63,7 +63,7 @@ func main() {
 		config.RedisAddress,  //addr
 		config.RedisPassword, //password
 		config.RedisDB,       //db
-		5*time.Second,        //timeout
+		3*time.Second,        //timeout
 	)
 
 	memAdp := adapters.NewMemoryClient[*service.RemoteImage](
@@ -84,7 +84,7 @@ func main() {
 
 	controller := ctrl.New(
 		entry,          //logEntry
-		false,          //debug
+		config.Debug,   //debug
 		config.Prefix,  //Prefix
 		config.Version, //Version
 		algKey,         //AlgKey

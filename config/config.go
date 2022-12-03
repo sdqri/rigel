@@ -6,6 +6,7 @@ import (
 
 //PubKeyPem can contain Pem-encoded public key
 type Config struct {
+	Debug         bool   `env:"DEBUG" env-default:"false"`
 	Host          string `env:"HOST" env-default:"0.0.0.0"`
 	Port          int    `env:"PORT" env-default:"8080"`
 	Prefix        string `env:"PREFIX" env-default:"rigel"`
