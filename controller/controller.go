@@ -43,7 +43,7 @@ func New(logEntry *log.Entry, debug bool, prefix, version string, algKey service
 	}
 
 	ctrl.Get("/version", ctrl.getVersion)
-	ctrl.Get("/", ctrl.getImage)
+	ctrl.Get("/img/:req", ctrl.getImage)
 	return ctrl
 }
 
@@ -53,8 +53,8 @@ func (ctrl *RigelController) getVersion(c *fiber.Ctx) error {
 
 func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	// Checking whether query parameter exists
-	queryParams := c.Query("req")
-	if queryParams == "" {
+	queryParams := c.Params("req", "noreq")
+	if queryParams == "noreq" {
 		c.SendStatus(404)
 		return c.SendString(ErrNoQueryParameters.Error())
 	}
