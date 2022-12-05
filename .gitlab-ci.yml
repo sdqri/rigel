@@ -1,0 +1,26 @@
+stages:
+    - build
+    - deploy
+
+build_prod:
+    stage: build
+    script:
+        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+        - docker build -t $CI_REGISTRY_IMAGE:prod-$CI_PIPELINE_IID .
+        - docker push $CI_REGISTRY_IMAGE:prod-$CI_PIPELINE_IID
+    only:
+        - tags
+    tags:
+        - vpnrunner
+
+
+deploy_prod:
+    stage: deploy
+    script:
+        - mkdir -p $HOME/.kube
+        - echo ${kube_config} | base64 -d > $HOME/.kube/config
+        - kubectl config view
+        - kubectl set image deployment.apps/rigel-deployment api=$CI_REGISTRY_IMAGE:prod-$CI_PIPELINE_IID -n prod-momcore
+        - curl -XPOST --data "text=Project ${CI_PROJECT_PATH} on branch ${CI_COMMIT_REF_NAME} deployed successfully.%0A%0ABy ${GITLAB_USER_NAME}.%0A%0ACommit Details = ${CI_COMMIT_MESSAGE}%0A%0A${CI_PROJECT_URL}" ${TELEGRAM_BOT}
+    only:
+        - tags
