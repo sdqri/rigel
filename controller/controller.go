@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/sdqri/rigel/adapters"
 	"github.com/sdqri/rigel/service"
@@ -98,6 +99,9 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	}()
 
 	fileName := fmt.Sprintf("image.%s", remoteImage.Type())
-	c.Attachment(fileName)
+	c.Type(filepath.Ext(fileName))
+	// TODO: Add inline content disposition
+	// c.setCanonical(HeaderContentDisposition, `attachment; filename="`+c.app.quoteString(fname)+`"`)
+	// c.Attachment(fileName)
 	return c.Send(*remoteImage.Data)
 }
