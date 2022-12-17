@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 var (
@@ -14,12 +17,28 @@ var (
 )
 
 func DownloadFile(URL string) ([]byte, error) {
-	// Get the response bytes from the url
-	response, err := http.Get(URL)
+	options := cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	}
+	jar, err := cookiejar.New(&options)
 	if err != nil {
-		fmt.Println(URL)
-		fmt.Printf("%T", err)
-		fmt.Println("hi1", err)
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", URL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Googlebot")
+
+	client := http.Client{
+		Jar: jar,
+	}
+
+	// Get the response bytes from the url
+	response, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
 		return nil, err
 
 	}
