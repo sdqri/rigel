@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,8 +27,9 @@ type AlgKey struct {
 }
 
 type ImageRequest struct {
-	URL     string       `json:"url"`
-	Options bimg.Options `json:"options"`
+	URL       string       `json:"url"`
+	Options   bimg.Options `json:"options"`
+	Signature string       `json:"-"`
 }
 
 func (ir *ImageRequest) String() string {
@@ -34,7 +37,8 @@ func (ir *ImageRequest) String() string {
 }
 
 func (ir *ImageRequest) GetKey(prefix string) (key string) {
-	return fmt.Sprintf("%s:%s", strings.TrimPrefix(prefix, "/"), ir.URL)
+	key = fmt.Sprintf("%s:%s", strings.TrimPrefix(prefix, "/"), ir.Signature)
+	return
 }
 
 func (ir *ImageRequest) Download() (remoteImage *RemoteImage, err error) {
@@ -64,11 +68,24 @@ func ParseToken(algKey AlgKey, queryToken string, debug bool) (*ImageRequest, er
 	}
 
 	// Unmarshaling res into ImageRequest
-	ImageRequest := ImageRequest{}
+	sha1 := sha1.New()
+	sha1.Write([]byte(queryToken))
+	shasum := sha1.Sum(nil)
+	ImageRequest := ImageRequest{
+		Signature: hex.EncodeToString(shasum),
+	}
+	fmt.Println(ImageRequest)
 	err = json.Unmarshal([]byte(res), &ImageRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ImageRequest, nil
+}
+
+func NewImageRequest(signature string) *ImageRequest {
+	ImageRequest := ImageRequest{
+		Signature: signature,
+	}
+	return &ImageRequest
 }

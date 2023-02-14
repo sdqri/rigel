@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -38,7 +37,6 @@ func DownloadFile(URL string) ([]byte, error) {
 	// Get the response bytes from the url
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 
 	}

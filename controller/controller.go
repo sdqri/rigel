@@ -23,10 +23,11 @@ type RigelController struct {
 	Version  string
 	service.AlgKey
 	*fiber.App
-	cachers []adapters.Cacher
+	cachers     []adapters.Cacher
+	redisClient *adapters.RedisClient
 }
 
-func New(logEntry *log.Entry, debug bool, prefix, version string, algKey service.AlgKey, cashers []adapters.Cacher, fiberConfig ...fiber.Config) *RigelController {
+func New(logEntry *log.Entry, debug bool, prefix, version string, algKey service.AlgKey, cashers []adapters.Cacher, redisClient *adapters.RedisClient, fiberConfig ...fiber.Config) *RigelController {
 	// Setting package specific fields for log entry
 	entry := logEntry.WithFields(log.Fields{
 		"package": "adapters.controller",
@@ -34,17 +35,19 @@ func New(logEntry *log.Entry, debug bool, prefix, version string, algKey service
 
 	router := fiber.New(fiberConfig...)
 	ctrl := &RigelController{
-		LogEntry: entry,
-		debug:    debug,
-		Prefix:   prefix,
-		Version:  version,
-		AlgKey:   algKey,
-		App:      router,
-		cachers:  cashers,
+		LogEntry:    entry,
+		debug:       debug,
+		Prefix:      prefix,
+		Version:     version,
+		AlgKey:      algKey,
+		App:         router,
+		cachers:     cashers,
+		redisClient: redisClient,
 	}
 
 	ctrl.Get("/version", ctrl.getVersion)
 	ctrl.Get("/img/:req", ctrl.getImage)
+	ctrl.Get("/headsup/:req", ctrl.headImage)
 	return ctrl
 }
 
@@ -60,11 +63,18 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 		return c.SendString(ErrNoQueryParameters.Error())
 	}
 
-	// Parsing RemoteImage for finding src
-	imageRequest, err := service.ParseToken(ctrl.AlgKey, queryParams, ctrl.debug)
-	if err != nil {
-		c.SendStatus(404)
-		return c.SendString(err.Error())
+	var imageRequest *service.ImageRequest
+	// SHA-1 address | short URL
+	if len(queryParams) <= 64 {
+		imageRequest = service.NewImageRequest(queryParams)
+	} else {
+		// Parsing RemoteImage for finding src
+		var err error
+		imageRequest, err = service.ParseToken(ctrl.AlgKey, queryParams, ctrl.debug)
+		if err != nil {
+			c.SendStatus(404)
+			return c.SendString(err.Error())
+		}
 	}
 
 	var remoteImage *service.RemoteImage
@@ -80,7 +90,7 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	}
 
 	// Downloading image
-	remoteImage, err = imageRequest.Download()
+	remoteImage, err := imageRequest.Download()
 	if err != nil {
 		return fiber.NewError(fiber.StatusFailedDependency, "error while trying to download image")
 	}
@@ -104,4 +114,58 @@ func (ctrl *RigelController) getImage(c *fiber.Ctx) error {
 	// c.setCanonical(HeaderContentDisposition, `attachment; filename="`+c.app.quoteString(fname)+`"`)
 	// c.Attachment(fileName)
 	return c.Send(*remoteImage.Data)
+}
+
+func (ctrl *RigelController) headImage(c *fiber.Ctx) error {
+	// Checking whether query parameter exists
+	queryParams := c.Params("req", "noreq")
+	if queryParams == "noreq" {
+		return c.SendStatus(404)
+	}
+	go func() {
+		var imageRequest *service.ImageRequest
+		// SHA-1 address | short URL
+		if len(queryParams) <= 64 {
+			imageRequest = service.NewImageRequest(queryParams)
+		} else {
+			// Parsing RemoteImage for finding src
+			var err error
+			imageRequest, err = service.ParseToken(ctrl.AlgKey, queryParams, ctrl.debug)
+			if err != nil {
+				return
+			}
+		}
+
+		var remoteImage *service.RemoteImage
+		remoteImage = service.NewRemoteImage(service.WithImageRequest(imageRequest))
+		// check chachers
+		for _, cacher := range ctrl.cachers {
+			err := cacher.GetCachable(remoteImage)
+			if err == nil {
+				return
+			}
+		}
+
+		// Downloading image
+		remoteImage, err := imageRequest.Download()
+		if err != nil {
+			return
+		}
+
+		// Processing image
+		err = remoteImage.Process()
+		if err != nil {
+			return
+		}
+
+		// Caching
+		go func() {
+			for _, cacher := range ctrl.cachers {
+				cacher.Cache(remoteImage)
+			}
+		}()
+
+		return
+	}()
+	return c.SendStatus(200)
 }

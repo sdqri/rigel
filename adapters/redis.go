@@ -14,12 +14,13 @@ var (
 )
 
 type RedisClient struct {
-	LogEntry *log.Entry
-	Prefix   string
-	Client   *redis.Client
+	LogEntry   *log.Entry
+	Prefix     string
+	Client     *redis.Client
+	Expiration time.Duration
 }
 
-func NewRedisClient(logEntry *log.Entry, prefix string, addr string, password string, db int, timeout time.Duration) *RedisClient {
+func NewRedisClient(logEntry *log.Entry, prefix string, addr string, password string, db int, timeout time.Duration, expiration time.Duration) *RedisClient {
 	// Setting package specific fields for log entry
 	entry := logEntry.WithFields(log.Fields{
 		"package": "adapters.redis",
@@ -37,6 +38,7 @@ func NewRedisClient(logEntry *log.Entry, prefix string, addr string, password st
 			ReadTimeout:  timeout,
 			WriteTimeout: timeout,
 		}),
+		Expiration: expiration,
 	}
 	return &rc
 }
@@ -48,7 +50,7 @@ func (rc *RedisClient) Cache(cacheable Cacheable) error {
 	if err != nil {
 		return err
 	}
-	return rc.Client.Set(ctx, key, value, 0).Err()
+	return rc.Client.Set(ctx, key, value, rc.Expiration).Err()
 }
 
 func (rc *RedisClient) GetCachable(cacheable Cacheable) error {

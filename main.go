@@ -64,6 +64,7 @@ func main() {
 		config.RedisPassword, //password
 		config.RedisDB,       //db
 		3*time.Second,        //timeout
+		30*24*time.Hour,      //expiration
 	)
 
 	memAdp := adapters.NewMemoryClient[*service.RemoteImage](
@@ -89,6 +90,7 @@ func main() {
 		config.Version, //Version
 		algKey,         //AlgKey
 		[]adapters.Cacher{memAdp, redisAdp},
+		redisAdp,
 	)
 
 	server := fiber.New()
