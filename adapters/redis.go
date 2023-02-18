@@ -2,15 +2,11 @@ package adapters
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
-)
-
-var (
-	ErrKeyNotExists error = errors.New("key doesnt not exists")
 )
 
 type RedisClient struct {
@@ -43,19 +39,25 @@ func NewRedisClient(logEntry *log.Entry, prefix string, addr string, password st
 	return &rc
 }
 
-func (rc *RedisClient) Cache(cacheable Cacheable) error {
+func (rc *RedisClient) Cache(cacheable Cacheable[string]) error {
 	rc.LogEntry.Debugf("writing cacheable(%s) to redis", cacheable.String())
 	ctx := context.Background()
-	key, value, err := cacheable.GetPair(rc.Prefix)
+	pair, err := cacheable.GetPair()
 	if err != nil {
 		return err
 	}
+	key := fmt.Sprintf("%s:%s", rc.Prefix, pair.Key)
+	value := pair.Value
 	return rc.Client.Set(ctx, key, value, rc.Expiration).Err()
 }
 
-func (rc *RedisClient) GetCachable(cacheable Cacheable) error {
+func (rc *RedisClient) GetCachable(cacheable Cacheable[string]) error {
 	ctx := context.Background()
-	key := cacheable.GetKey(rc.Prefix)
+	key, err := cacheable.GetKey()
+	if err != nil {
+		return err
+	}
+	key = fmt.Sprintf("%s:%s", rc.Prefix, key)
 	rc.LogEntry.Debugf("reading cacheable(%s) from redis", key)
 	value, err := rc.Client.Get(ctx, key).Result()
 	if err == redis.Nil {

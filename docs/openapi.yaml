@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: rigel
+  version: 1.0.0
+  contact: {}
+servers:
+- url: localhost:8080
+paths:
+  /rigel/version:
+    get:
+      summary: version
+      description: version
+      operationId: version
+      responses:
+        '200':
+          description: ''
+  /rigel/proxy/:
+    get:
+      summary: ProxyImage
+      description: ProxyImage
+      operationId: proxyimage
+      parameters:
+      - name: height
+        in: query
+        schema:
+          type: string
+          example: '200'
+      - name: width
+        in: query
+        schema:
+          type: string
+          example: '200'
+      - name: img
+        in: query
+        schema:
+          type: string
+          example: https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg
+      - name: X-ExpiresAt
+        in: query
+        schema:
+          type: string
+          example: '1676731602092'
+      - name: X-Signature
+        in: query
+        schema:
+          type: string
+          example: 26a5df0b413bb8531d54769beec3af8d3213498c
+      responses:
+        '200':
+          description: ''
+  /rigel/headsup:
+    post:
+      summary: Headsup
+      description: Headsup
+      operationId: headsup
+      parameters:
+      - name: img
+        in: query
+        schema:
+          type: string
+          example: https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg
+      - name: height
+        in: query
+        schema:
+          type: string
+          example: '25'
+      - name: width
+        in: query
+        schema:
+          type: string
+          example: '25'
+      responses:
+        '200':
+          description: ''
+  /rigel/img/{signature}:
+    get:
+      summary: short url
+      description: short url
+      operationId: shortUrl
+      responses:
+        '200':
+          description: ''
+    parameters:
+    - name: signature
+      in: path
+      required: true
+      schema:
+        type: string
+        example: 5068de73d49a3db8cc7c7e5927457727da01f679
+tags: []
+

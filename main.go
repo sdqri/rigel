@@ -4,34 +4,19 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sdqri/rigel/adapters"
 	"github.com/sdqri/rigel/config"
-	ctrl "github.com/sdqri/rigel/controller"
-	"github.com/sdqri/rigel/service"
+	ctrl "github.com/sdqri/rigel/controllers"
+	"github.com/sdqri/rigel/middlewares"
+	srv "github.com/sdqri/rigel/services"
 
-	swagger "github.com/arsmn/fiber-swagger/v2"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-
-	_ "github.com/sdqri/rigel/docs"
 )
 
-// @title Rigel Api
-// @version 1.0.0
-// @description Yet another image proxy
-// @termsOfService http://swagger.io/terms/
-// @contact.name Sadiq Rahmati
-// @contact.email sadeg.r1@gmail.com
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-// @host localhost:8080
-// @BasePath /
 func main() {
 	// Creating Root Log.Entry ------------------------------------------------
 	logger := log.New()
@@ -55,55 +40,50 @@ func main() {
 
 	config := config.GetConfig()
 
-	config.PubKeyPem = []byte(strings.ReplaceAll(string(config.PubKeyPem), "\\n", "\n"))
-
 	redisAdp := adapters.NewRedisClient(
-		main_entry,           //LogEntry
-		config.Prefix,        //Prefix
-		config.RedisAddress,  //addr
-		config.RedisPassword, //password
-		config.RedisDB,       //db
-		3*time.Second,        //timeout
-		30*24*time.Hour,      //expiration
+		main_entry,           // LogEntry
+		config.Prefix,        // Prefix
+		config.RedisAddress,  // addr
+		config.RedisPassword, // password
+		config.RedisDB,       // db
+		time.Duration(config.RedisTimeout)*time.Second,    //timeout
+		time.Duration(config.RedisExpiration)*time.Second, //expiration
 	)
 
-	memAdp := adapters.NewMemoryClient[*service.RemoteImage](
-		entry,         //logEntry
-		config.Prefix, //Prefix
-		config.Cap,    //cap
+	memAdp := adapters.NewMemoryClient(
+		entry,         // logEntry
+		config.Prefix, // p[*srv.RemoteImage]refix
+		config.Cap,    // cap
 	)
 
-	// Creating Algkey
-	pub, err := jwk.ParseKey(config.PubKeyPem, jwk.WithPEM(true))
-	if err != nil {
-		logger.Fatalf("Error while trying create AlgKey, err = %v", err)
-	}
-	algKey := service.AlgKey{
-		Alg:    jwa.SignatureAlgorithm(config.Alg),
-		PubKey: pub,
+	rigelService := srv.NewRigelService(config.Debug, entry,
+		adapters.NewMultilevelCacher[string](memAdp, redisAdp))
+
+	var signatureValidator gin.HandlerFunc = nil
+	if config.SignatureValidation == true {
+		signatureValidator = middlewares.NewSignatureValidator(config.XKey, config.XSalt, config.Prefix)
 	}
 
-	controller := ctrl.New(
-		entry,          //logEntry
-		config.Debug,   //debug
-		config.Prefix,  //Prefix
-		config.Version, //Version
-		algKey,         //AlgKey
-		[]adapters.Cacher{memAdp, redisAdp},
-		redisAdp,
+	rigelController := ctrl.NewRigelController(
+		config.Debug,       // debug
+		entry,              // logEntry
+		config.Version,     // version
+		rigelService,       // service
+		signatureValidator, // signatureValidator
 	)
 
-	server := fiber.New()
-	server.Use(recover.New())
+	router := gin.Default()
+	if config.CORS == true {
+		router.Use(cors.New(cors.Config{
+			AllowOrigins: config.AllowOrigins,
+			AllowMethods: config.AllowMethods,
+			AllowHeaders: config.AllowHeaders,
+		}))
+	}
 
-	server.Get("/docs/*", swagger.HandlerDefault)
-	server.Get("/docs/*", swagger.New(swagger.Config{
-		URL:          fmt.Sprintf("%s:%v/openapi.json", config.Host, config.Port),
-		DocExpansion: "none",
-	}))
+	prefix := router.Group(config.Prefix)
+	rigelController.Handle(prefix)
 
-	mountPrefix := "/" + config.Prefix
-	server.Mount(mountPrefix, controller.App)
-	addr := fmt.Sprintf("%s:%v", config.Host, config.Port)
-	server.Listen(addr)
+	server_addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	router.Run(server_addr)
 }

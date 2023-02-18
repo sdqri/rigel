@@ -1,58 +1,56 @@
 package adapters
 
 import (
-	"encoding/json"
-	"errors"
+	"fmt"
 
 	"github.com/Code-Hex/go-generics-cache/policy/lfu"
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	ErrCacheableType error = errors.New("cacheable should be of type lfuCache")
-	ErrValueType     error = errors.New("cached value type is strange")
-)
-
-type MemoryClient[T Cacheable] struct {
+type MemoryClient struct {
 	LogEntry *log.Entry
 	Prefix   string
-	lfuCache *lfu.Cache[string, T]
+	lfuCache *lfu.Cache[string, string]
 }
 
-func NewMemoryClient[T Cacheable](logEntry *log.Entry, prefix string, cap int) *MemoryClient[T] {
+func NewMemoryClient(logEntry *log.Entry, prefix string, cap int) *MemoryClient {
 	// Setting package specific fields for log entry
 	entry := logEntry.WithFields(log.Fields{
 		"package": "adapters.memory",
 	})
-	c := lfu.NewCache[string, T](lfu.WithCapacity(cap))
-	return &MemoryClient[T]{
+	c := lfu.NewCache[string, string](lfu.WithCapacity(cap))
+	return &MemoryClient{
 		LogEntry: entry,
 		Prefix:   prefix,
 		lfuCache: c,
 	}
 }
 
-func (mc *MemoryClient[T]) Cache(cacheable Cacheable) error {
-	cacheableT, ok := cacheable.(T)
-	if !ok {
-		return ErrCacheableType
+func (mc *MemoryClient) Cache(cacheable Cacheable[string]) error {
+	mc.LogEntry.Debugf("writing cacheable(%s) to memory(lfu cache)", cacheable.String())
+	pair, err := cacheable.GetPair()
+	if err != nil {
+		return err
 	}
-
-	mc.lfuCache.Set(cacheable.GetKey(mc.Prefix), cacheableT)
+	key := fmt.Sprintf("%s:%s", mc.Prefix, pair.Key)
+	value := pair.Value
+	mc.lfuCache.Set(key, value)
 	return nil
 }
 
-func (mc *MemoryClient[T]) GetCachable(cacheable Cacheable) error {
-	memCacheable, ok := mc.lfuCache.Get(cacheable.GetKey(mc.Prefix))
+func (mc *MemoryClient) GetCachable(cacheable Cacheable[string]) error {
+	key, err := cacheable.GetKey()
+	if err != nil {
+		return err
+	}
+	key = fmt.Sprintf("%s:%s", mc.Prefix, key)
+	mc.LogEntry.Debugf("reading cacheable(%s) from memory(lfu cache)", key)
+	value, ok := mc.lfuCache.Get(key)
 	if !ok {
 		return ErrKeyNotExists
 	}
 
-	value, err := json.Marshal(memCacheable)
-	if err != nil {
-		return ErrValueType
-	}
-	err = cacheable.ParseValue(string(value))
+	err = cacheable.ParseValue(value)
 	if err != nil {
 		return err
 	}
