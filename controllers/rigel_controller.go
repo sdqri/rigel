@@ -79,6 +79,7 @@ func (rc *RigelController) ProxyImage(c *gin.Context) {
 		})
 		return
 	}
+
 	imageRequest, err := services.NewImageRequest(args.Img, args.IROptions)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
@@ -121,6 +122,15 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		return
 	}
 	go rc.Service.ProxyImageRequest(imageRequest)
+
+	signature, err := imageRequest.SHA1Sum()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, map[string]string{"signature": signature})
 }
 
 func (rc *RigelController) GetBySignature(c *gin.Context) {
