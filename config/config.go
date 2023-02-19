@@ -21,7 +21,7 @@ type Config struct {
 	RedisTimeout        int      `env:"REDIS_TIMEOUT" env-default:"3"`
 	RedisExpiration     int      `env:"REDIS_EXPIRATION" env-default:"2592000"` // Expiration date for redis | default = 30 * 24 * 60 * 60
 	Cap                 int      `env:"CAP" env-default:"500"`                  // Capacity for lfu cache
-	SignatureValidation bool     `env:"SIGNATURE_VALIDATION" env-default:"false"`
+	SignatureValidation bool     `env:"SIGNATURE_VALIDATION" env-default:"true"`
 	XKey                string   `env:"X_KEY" env-default:"secretkey"`
 	XSalt               string   `env:"X_SALT" env-default:"secretsalt"`
 }
