@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 )
 
@@ -16,5 +17,5 @@ func Sign(key string, salt string, input []byte) string {
 	h := hmac.New(sha1.New, []byte(key))
 	input = append(input, []byte(salt)...)
 	h.Write(input)
-	return hex.EncodeToString(h.Sum(nil))
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
