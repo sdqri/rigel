@@ -11,7 +11,8 @@ build_prod:
     only:
         - tags
     tags:
-        - vpnrunner
+        #- vpnrunner
+        - mirorvpn
 
 
 deploy_prod:
