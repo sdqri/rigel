@@ -1,0 +1,7 @@
+services:
+  redis:
+    image: redis
+    container_name: rigel-redis
+    ports:
+      - "6379:6379"
+    
