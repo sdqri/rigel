@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/sdqri/rigel/adapters"
@@ -11,6 +15,7 @@ import (
 	ctrl "github.com/sdqri/rigel/controllers"
 	"github.com/sdqri/rigel/middlewares"
 	srv "github.com/sdqri/rigel/services"
+	"github.com/sdqri/rigel/utils"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -61,7 +66,8 @@ func main() {
 
 	var signatureValidator gin.HandlerFunc = nil
 	if config.SignatureValidation == true {
-		signatureValidator = middlewares.NewSignatureValidator(config.XKey, config.XSalt, config.Prefix)
+		signatory := utils.NewSignatory(config.Prefix, config.XKey, config.XSalt)
+		signatureValidator = middlewares.NewSignatureValidator(config.Prefix, signatory)
 	}
 
 	rigelController := ctrl.NewRigelController(
@@ -85,5 +91,39 @@ func main() {
 	rigelController.Handle(prefix)
 
 	server_addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	router.Run(server_addr)
+	fmt.Printf("Listening and serving HTTP on %v", server_addr)
+	srv := &http.Server{
+		Addr:    server_addr,
+		Handler: router,
+	}
+
+	go func() {
+		// service connections
+		err := srv.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("unable to ListenAndServe, err: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 5 seconds.
+	quit := make(chan os.Signal)
+	// kill (no param) default send syscanll.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
+	// catching ctx.Done(). timeout of 5 seconds.
+	select {
+	case <-ctx.Done():
+		log.Println("timeout of 5 seconds.")
+	}
+	log.Println("Server exiting")
 }

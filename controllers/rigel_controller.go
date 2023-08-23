@@ -15,8 +15,16 @@ var (
 )
 
 type ProxyParams struct {
-	Img string `form:"img" binding:"required"`
+	Img string `json:"img" form:"img" binding:"required"`
 	services.IROptions
+}
+
+type CacheImageResponse struct {
+	Signature string `json:"signature"`
+}
+
+type BatchedProxyParams struct {
+	Params []ProxyParams
 }
 
 type ImageService interface {
@@ -130,7 +138,8 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, map[string]string{"signature": signature})
+
+	c.JSON(http.StatusOK, CacheImageResponse{Signature: signature})
 }
 
 func (rc *RigelController) GetBySignature(c *gin.Context) {
