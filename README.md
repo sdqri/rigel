@@ -5,7 +5,8 @@ Small &amp; fast image proxy server written in Go!
 - Blazingly fast.
 - Wide range of image operations (e.g., Resize, Enlarge, Crop [including Smart Crop], Rotate, Flip, Flop, Zoom, Thumbnail, Extract area, Watermark [text or image], Gaussian blur effect, Custom output color space [RGB, grayscale...], Format conversion [with additional quality/compression settings], EXIF metadata [size, alpha channel, profile, orientation...], Trim).
 - Precaching with heads-up requests, providing short URLs.
-- Multi-level caching (memory(lfu), redis, etc) .
+- Support batched heads-up request for lower latency
+- Multi-level caching (memory(lru), redis, etc) .
 - Signed URLs with expiry support.
 
 ## Getting started
