@@ -2,7 +2,6 @@ package services
 
 import (
 	"github.com/sdqri/rigel/adapters"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,7 +28,10 @@ func (rs *RigelService) ProxyImageRequest(imageRequest *ImageRequest) (remoteIma
 	err = rs.MLC.GetCachable(queryableRemoteImage)
 	if err != nil {
 		//if queryableRemoteImage doesn't exists in cache
-		remoteImage, err = imageRequest.GetRemoteImage()
+		remoteImage, err = imageRequest.DownloadAndProcess()
+		if err != nil {
+			return
+		}
 		rs.MLC.Cache(imageRequest)
 		rs.MLC.Cache(remoteImage)
 		return
@@ -48,6 +50,7 @@ func (rs *RigelService) GetBySignature(signature string) (remoteImage *RemoteIma
 	if err != nil {
 		return
 	}
+
 	err = rs.MLC.GetCachable(queryableRemoteImage)
 	if err != nil {
 		//if queryableRemoteImage doesn't exists in cache
@@ -57,6 +60,7 @@ func (rs *RigelService) GetBySignature(signature string) (remoteImage *RemoteIma
 		}
 		return rs.ProxyImageRequest(queryableImageRequest)
 	}
+
 	remoteImage = queryableRemoteImage
 	return
 }

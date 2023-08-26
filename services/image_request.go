@@ -152,36 +152,38 @@ func (ir *ImageRequest) ParseValue(value string) error {
 }
 
 func (ir *ImageRequest) GetQueryableRemoteImage() (remoteImage *RemoteImage, err error) {
-	key, err := ir.GetKey()
+	sha1sum, err := ir.SHA1Sum()
 	if err != nil {
 		return
 	}
+
 	remoteImage = &RemoteImage{
-		SHA1Sum: key,
+		SHA1Sum: sha1sum,
 	}
 	return
 }
 
-func (ir *ImageRequest) DownloadImage() (remoteImage *RemoteImage, err error) {
-	// Getting key for
-	key, err := ir.GetKey()
+func (ir *ImageRequest) Download() (remoteImage *RemoteImage, err error) {
+	sha1sum, err := ir.SHA1Sum()
 	if err != nil {
 		return
 	}
+
 	data, err := utils.DownloadFile(ir.URL)
 	if err != nil {
 		return
 	}
-	remoteImage, err = NewRemoteImage(key, &data)
+
+	remoteImage, err = NewRemoteImage(sha1sum, &data)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (ir *ImageRequest) GetRemoteImage() (remoteImage *RemoteImage, err error) {
+func (ir *ImageRequest) DownloadAndProcess() (remoteImage *RemoteImage, err error) {
 	// download & process
-	remoteImage, err = ir.DownloadImage()
+	remoteImage, err = ir.Download()
 	if err != nil {
 		return
 	}

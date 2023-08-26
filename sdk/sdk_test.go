@@ -1,6 +1,7 @@
 package gorigelsdk_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -70,7 +71,7 @@ func TestCacheImage(t *testing.T) {
 	rigelSDK := rigelsdk.NewSDK("http://localhost:8080/rigel", key, salt)
 
 	imageURL := "https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg"
-	expectedHash := "fde5eda7214568293ad70621aec2ad1efee5c7fd"
+	expected := "http://localhost:8080/rigel/img/fde5eda7214568293ad70621aec2ad1efee5c7fd?X-Signature=ztW09e3EvM5IE7fJNsg0Z5-lPXg"
 
 	options := rigelsdk.Options{
 		Width:  rigelsdk.Ptr(300),
@@ -78,10 +79,44 @@ func TestCacheImage(t *testing.T) {
 		Type:   rigelsdk.WEBP,
 	}
 
-	result, err := rigelSDK.CacheImage(imageURL, &options, -1)
+	actual, err := rigelSDK.CacheImage(imageURL, &options, -1)
 
 	assert.Nil(t, err)
-	assert.Equal(t, expectedHash, result)
+	assert.Equal(t, expected, actual)
+}
+
+func TestBatchedCacheImage(t *testing.T) {
+	key := "secretkey"
+	salt := "secretsalt"
+	rigelSDK := rigelsdk.NewSDK("http://localhost:8080/rigel", key, salt)
+
+	batchedCachedImageArgs := []rigelsdk.ProxyParams{
+		{
+			Img: "https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg",
+			Options: rigelsdk.Options{
+				Height: rigelsdk.Ptr(100),
+				Width:  rigelsdk.Ptr(100),
+				Type:   rigelsdk.WEBP,
+			},
+		},
+		{
+			Img: "https://img.freepik.com/premium-photo/baby-cat-british-shorthair_648604-47.jpg",
+			Options: rigelsdk.Options{
+				Height: rigelsdk.Ptr(100),
+				Width:  rigelsdk.Ptr(100),
+				Type:   rigelsdk.WEBP,
+			},
+		},
+	}
+
+	expected := `[{"img":"https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg","signature":"124799fa1f5d2069e1b56793e01f8fe260b87791"},{"img":"https://img.freepik.com/premium-photo/baby-cat-british-shorthair_648604-47.jpg","signature":"7fba571dee9007af7964e23239e2a1201419c0b8"}]`
+	result, err := rigelSDK.BatchedCacheImage(batchedCachedImageArgs, -1)
+	assert.Nil(t, err)
+
+	actualBytes, err := json.Marshal(result)
+	actual := string(actualBytes)
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
 }
 
 func TestTryShortURL(t *testing.T) {

@@ -15,16 +15,13 @@ var (
 )
 
 type ProxyParams struct {
-	Img string `json:"img" form:"img" binding:"required"`
-	services.IROptions
+	Img       string             `json:"img" form:"img" binding:"required"`
+	IROptions services.IROptions `json:"options"`
 }
 
 type CacheImageResponse struct {
+	Img       string `json:"img"`
 	Signature string `json:"signature"`
-}
-
-type BatchedProxyParams struct {
-	Params []ProxyParams
 }
 
 type ImageService interface {
@@ -61,15 +58,18 @@ func NewRigelController(
 }
 
 func (ctrl *RigelController) Handle(router gin.IRouter) {
+
 	if ctrl.SignatureValidator != nil {
 		router.GET("/version", ctrl.getVersion)
 		router.GET("/proxy", ctrl.SignatureValidator, ctrl.ProxyImage)
 		router.POST("/headsup", ctrl.SignatureValidator, ctrl.CacheImage)
+		router.POST("/batched-headsup", ctrl.SignatureValidator, ctrl.BatchedCacheImage)
 		router.GET("/img/:signature", ctrl.SignatureValidator, ctrl.GetBySignature)
 	} else {
 		router.GET("/version", ctrl.getVersion)
 		router.GET("/proxy", ctrl.ProxyImage)
 		router.POST("/headsup", ctrl.CacheImage)
+		router.POST("/batched-headsup", ctrl.BatchedCacheImage)
 		router.GET("/img/:signature", ctrl.GetBySignature)
 	}
 }
@@ -115,6 +115,7 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		})
 		return
 	}
+
 	imageRequest, err := services.NewImageRequest(args.Img, args.IROptions)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
@@ -122,6 +123,7 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		})
 		return
 	}
+
 	err = rc.Service.CacheImageRequest(imageRequest)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
@@ -129,7 +131,6 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		})
 		return
 	}
-	go rc.Service.ProxyImageRequest(imageRequest)
 
 	signature, err := imageRequest.SHA1Sum()
 	if err != nil {
@@ -139,7 +140,10 @@ func (rc *RigelController) CacheImage(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, CacheImageResponse{Signature: signature})
+	// Fire ProxyImageRequest to download, process and cache RemoteImage
+	go rc.Service.ProxyImageRequest(imageRequest)
+
+	c.JSON(http.StatusOK, CacheImageResponse{Img: args.Img, Signature: signature})
 }
 
 func (rc *RigelController) GetBySignature(c *gin.Context) {
@@ -150,12 +154,57 @@ func (rc *RigelController) GetBySignature(c *gin.Context) {
 		})
 		return
 	}
+
 	remoteImage, err := rc.Service.GetBySignature(signature)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "signature hasn't provided",
+			"error": "signature isn't valid",
 		})
 		return
 	}
+
 	c.Data(http.StatusOK, remoteImage.ContentType(), *remoteImage.Data)
+}
+
+func (rc *RigelController) BatchedCacheImage(c *gin.Context) {
+	var args []ProxyParams
+	if err := c.Bind(&args); err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	response := make([]CacheImageResponse, 0)
+	for _, proxyParams := range args {
+		imageRequest, err := services.NewImageRequest(proxyParams.Img, proxyParams.IROptions)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		err = rc.Service.CacheImageRequest(imageRequest)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		go rc.Service.ProxyImageRequest(imageRequest)
+
+		signature, err := imageRequest.SHA1Sum()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		response = append(response, CacheImageResponse{Img: proxyParams.Img, Signature: signature})
+	}
+
+	c.JSON(http.StatusOK, response)
 }

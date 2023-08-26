@@ -5,6 +5,11 @@ import (
 	"net/url"
 )
 
+type ProxyParams struct {
+	Img     string  `json:"img"`
+	Options Options `json:"options"`
+}
+
 type Options struct {
 	Height         *int
 	Width          *int

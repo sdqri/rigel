@@ -9,7 +9,6 @@ import (
 )
 
 type RemoteImage struct {
-	// ImageRequest `json:"image_request"`
 	SHA1Sum string  `json:"-"`
 	Data    *[]byte `json:"data"`
 }

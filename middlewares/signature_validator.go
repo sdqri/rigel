@@ -16,7 +16,7 @@ type XParams struct {
 func NewSignatureValidator(prefix string, signatory *utils.Signatory) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var args XParams
-		err := c.Bind(&args)
+		err := c.BindQuery(&args)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, map[string]string{
 				"error": err.Error(),

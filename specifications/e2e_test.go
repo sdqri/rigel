@@ -65,8 +65,7 @@ func setupServer(logger *zap.Logger) func() {
 		serverCmd.Env = append(serverCmd.Env, fmt.Sprintf("%s=%s", envVar, envVal))
 	}
 
-	data := make([]byte, 0)
-	outputBuffer := bytes.NewBuffer(data)
+	outputBuffer := bytes.NewBuffer(nil)
 	serverCmd.Stdout = outputBuffer
 
 	successChan := make(chan struct{}, 0)
@@ -90,7 +89,6 @@ func setupServer(logger *zap.Logger) func() {
 		logger.Debug("Tearing down test suit")
 		cancelServer()
 		err := serverCmd.Process.Signal(syscall.SIGINT)
-		fmt.Printf("**** %v", err)
 		cmd := exec.Command("./teardown_suit.sh")
 		cmd.Dir = path.Join(wd, "test_fixtures")
 		_, err = cmd.Output()
@@ -135,7 +133,6 @@ func TestMain(m *testing.M) {
 
 func TestVersion(t *testing.T) {
 	result := driver.Version()
-	fmt.Println("result=", result)
 	assert.NoError(t, result.Err)
 	assert.NotEqual(t, result.Ok, "")
 }

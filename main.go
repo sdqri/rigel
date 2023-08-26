@@ -46,13 +46,13 @@ func main() {
 	config := config.GetConfig()
 
 	redisAdp := adapters.NewRedisClient(
-		main_entry,           // LogEntry
-		config.Prefix,        // Prefix
-		config.RedisAddress,  // addr
-		config.RedisPassword, // password
-		config.RedisDB,       // db
-		time.Duration(config.RedisTimeout)*time.Second,    //timeout
-		time.Duration(config.RedisExpiration)*time.Second, //expiration
+		main_entry,             // LogEntry
+		config.Prefix,          // Prefix
+		config.RedisAddress,    // addr
+		config.RedisPassword,   // password
+		config.RedisDB,         // db
+		config.RedisTimeout,    //timeout
+		config.RedisExpiration, //expiration
 	)
 
 	memAdp := adapters.NewMemoryClient(
@@ -91,7 +91,6 @@ func main() {
 	rigelController.Handle(prefix)
 
 	server_addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	fmt.Printf("Listening and serving HTTP on %v", server_addr)
 	srv := &http.Server{
 		Addr:    server_addr,
 		Handler: router,
@@ -99,6 +98,7 @@ func main() {
 
 	go func() {
 		// service connections
+		fmt.Printf("Listening and serving HTTP on %v", server_addr)
 		err := srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("unable to ListenAndServe, err: %v", err)
