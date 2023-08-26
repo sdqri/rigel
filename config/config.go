@@ -12,7 +12,7 @@ type Config struct {
 	Host                string        `env:"HOST" env-default:"0.0.0.0"`
 	Port                int           `env:"PORT" env-default:"8080"`
 	Prefix              string        `env:"PREFIX" env-default:"rigel"`
-	Version             string        `env:"VERSION" env-default:"1.0.0"`
+	Version             string        `env:"VERSION" env-default:"2.0.0"`
 	CORS                bool          `env:"CORS" env-default:"false"`
 	AllowMethods        []string      `env:"AllowMethods" env-default:"GET,POST"`
 	AllowOrigins        []string      `env:"AllowOrigins" env-default:"*"`
