@@ -109,7 +109,7 @@ func TestBatchedCacheImage(t *testing.T) {
 		},
 	}
 
-	expected := `[{"img":"https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg","signature":"124799fa1f5d2069e1b56793e01f8fe260b87791"},{"img":"https://img.freepik.com/premium-photo/baby-cat-british-shorthair_648604-47.jpg","signature":"7fba571dee9007af7964e23239e2a1201419c0b8"}]`
+	expected := `[{"img":"https://www.pakainfo.com/wp-content/uploads/2021/09/image-url-for-testing.jpg","signature":"124799fa1f5d2069e1b56793e01f8fe260b87791","short_url":"http://localhost:8080/rigel/img/124799fa1f5d2069e1b56793e01f8fe260b87791?X-Signature=oLiW_5SZmf-13KP2eYv1lisJNCI"},{"img":"https://img.freepik.com/premium-photo/baby-cat-british-shorthair_648604-47.jpg","signature":"7fba571dee9007af7964e23239e2a1201419c0b8","short_url":"http://localhost:8080/rigel/img/7fba571dee9007af7964e23239e2a1201419c0b8?X-Signature=8kFZt2kYHTQoUNqPEzleTn7a6QI"}]`
 	result, err := rigelSDK.BatchedCacheImage(batchedCachedImageArgs, -1)
 	assert.Nil(t, err)
 

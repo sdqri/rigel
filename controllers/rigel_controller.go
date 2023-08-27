@@ -20,8 +20,9 @@ type ProxyParams struct {
 }
 
 type CacheImageResponse struct {
-	Img       string `json:"img"`
-	Signature string `json:"signature"`
+	Img       string `json:"img,emitempty"`
+	Signature string `json:"signature,emitempty"`
+	ShortURL  string `json:"short_url,emitempty"`
 }
 
 type ImageService interface {

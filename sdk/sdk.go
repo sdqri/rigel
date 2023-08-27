@@ -75,7 +75,6 @@ func (s *SDK) BatchedCacheImage(proxyParamsSlice []ProxyParams, expiry int64) ([
 		return nil, err
 	}
 
-	fmt.Println("&&&&&=", pathURL)
 	resp, err := http.Post(pathURL, "application/json", buf)
 	if err != nil {
 		return nil, err
@@ -88,6 +87,13 @@ func (s *SDK) BatchedCacheImage(proxyParamsSlice []ProxyParams, expiry int64) ([
 	}
 	var cacheImageResponse []controllers.CacheImageResponse
 	err = json.NewDecoder(resp.Body).Decode(&cacheImageResponse)
+
+	// Create ShortURL
+	for i:=0;i<len(cacheImageResponse); i++{
+		signedQueryString = SignQueryString(s.key, s.salt, fmt.Sprintf("img/%s", cacheImageResponse[i].Signature), "", expiry)
+		cacheImageResponse[i].ShortURL = fmt.Sprintf("%s/img/%s?%s", s.baseURL, cacheImageResponse[i].Signature, signedQueryString)
+
+	}
 	return cacheImageResponse, err
 }
 
