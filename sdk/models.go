@@ -5,6 +5,12 @@ import (
 	"net/url"
 )
 
+type CacheImageResponse struct {
+	Img       string `json:"img,emitempty"`
+	Signature string `json:"signature,emitempty"`
+	ShortURL  string `json:"short_url,emitempty"`
+}
+
 type ProxyParams struct {
 	Img     string  `json:"img"`
 	Options Options `json:"options"`

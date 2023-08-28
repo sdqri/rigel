@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/sdqri/rigel/controllers"
 )
 
 type SDK struct {
@@ -54,7 +52,7 @@ func (s *SDK) CacheImage(imageURL string, options *Options, expiry int64) (strin
 		err := fmt.Errorf("failed when caching image with statuscode = %v", resp.StatusCode)
 		return "", err
 	}
-	var cacheImageResponse controllers.CacheImageResponse
+	var cacheImageResponse CacheImageResponse
 	err = json.NewDecoder(resp.Body).Decode(&cacheImageResponse)
 	if err != nil {
 		return "", err
@@ -65,7 +63,7 @@ func (s *SDK) CacheImage(imageURL string, options *Options, expiry int64) (strin
 	return pathURL, nil
 }
 
-func (s *SDK) BatchedCacheImage(proxyParamsSlice []ProxyParams, expiry int64) ([]controllers.CacheImageResponse, error) {
+func (s *SDK) BatchedCacheImage(proxyParamsSlice []ProxyParams, expiry int64) ([]CacheImageResponse, error) {
 	signedQueryString := SignQueryString(s.key, s.salt, "batched-headsup", "", expiry)
 	pathURL := fmt.Sprintf("%s/batched-headsup?%s", s.baseURL, signedQueryString)
 
@@ -85,11 +83,11 @@ func (s *SDK) BatchedCacheImage(proxyParamsSlice []ProxyParams, expiry int64) ([
 		err := fmt.Errorf("failed when caching image with statuscode = %v", resp.StatusCode)
 		return nil, err
 	}
-	var cacheImageResponse []controllers.CacheImageResponse
+	var cacheImageResponse []CacheImageResponse
 	err = json.NewDecoder(resp.Body).Decode(&cacheImageResponse)
 
 	// Create ShortURL
-	for i:=0;i<len(cacheImageResponse); i++{
+	for i := 0; i < len(cacheImageResponse); i++ {
 		signedQueryString = SignQueryString(s.key, s.salt, fmt.Sprintf("img/%s", cacheImageResponse[i].Signature), "", expiry)
 		cacheImageResponse[i].ShortURL = fmt.Sprintf("%s/img/%s?%s", s.baseURL, cacheImageResponse[i].Signature, signedQueryString)
 
