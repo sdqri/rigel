@@ -16,6 +16,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sdqri/rigel/sdk v0.0.0-20230828145120-14c56ef0d6f0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 )
 
