@@ -1,3 +1,3 @@
-module rigel/sdk
+modeul github.com/sdqri/rigel/sdk
 
 go 1.20
